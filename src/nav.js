@@ -1,0 +1,33 @@
+module.exports = {
+    menu:[
+        {
+            id:1,
+            icon:'',
+            title:'系统首页',
+            name:'main',
+            path:'home'
+        },
+        {
+            id:2,
+            icon:'',
+            title:'系统信息',
+            children:[
+                {
+                    id:1,
+                    icon:'',
+                    title:'主页',
+                    name:'home',
+                    path:'home'
+                },
+                {
+                    id:2,
+                    icon:'',
+                    title:'关于',
+                    name:'about',
+                    path:'about'
+                }
+            ]
+        },
+    ],
+    defaultPosition:'1'
+};
