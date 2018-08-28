@@ -53,16 +53,22 @@
           <Layout :style="{width:'100%',height:'100%'}">
             <div class="nav-tab-container">
               <div class="nav-tab-tag" >
-                <Tabs type="card"  closable :value="defaultTab" @on-click="(name)=>redirectTo(name)">             
+                <Tabs :style="{flex:1}" type="card"  closable :value="defaultTab" @on-click="(name)=>redirectTo(name)">             
                     <TabPane  :name="tab.name" :label="tab.label" v-for="(tab,index) in tabs" :key="index" ></TabPane>
-                    <div class="nav-tab-func-group" slot="extra">
-                      <Button size="small" type="primary" shape="circle" :style="{marginRight:'10px'}">标签管理</Button>
-                    </div>
-                </Tabs>  
+                </Tabs> 
+                <div class="nav-tab-func-group" >
+                      <Dropdown :style="{marginRight:'10px'}">
+                        <Button type="primary" shape="circle" size="small">标签管理</Button>
+                        <DropdownMenu slot="list" >
+                          <DropdownItem name="current" @click.native="removeTag('current')">关闭当前标签</DropdownItem>
+                          <DropdownItem name="all" @click.native="removeTag('all')">关闭所有标签</DropdownItem>
+                      </DropdownMenu>
+                      </Dropdown>
+                    </div> 
               </div>  
               <!-- 菜单内容  -->
               <div class="router-view-container">
-                <div class="router-view-carema">
+                <div class="router-view-carema" v-if="hasRouterView">
                     <keep-alive>
                         <router-view ></router-view>
                     </keep-alive>
@@ -97,13 +103,58 @@ export default {
       })
     },
     redirectTo:function(name){ 
-      let {currentName} = this.$router.history.current;
+      let { currentName } = this.$router.history.current;
+      
       if(currentName != name){
         this.$router.push({name});
       }
-      
+      this.$store.dispatch({
+        type:'setDefaultTab',
+        currentName:name
+      });
+    },
+    removeTag:function(type){
+      let {tabs,defaultTab} = this.$store.state.mainframe;
+      let router = this.$router;
+      let removeIndex = -1;
+      if(type == 'current'){
+        tabs.forEach((ele,index)=>{
+          if(ele.name == defaultTab ){
+            let currentName = null;        
+            //选择正确的标签
+            removeIndex = index;
+            if(tabs[index + 1] != undefined){
+              currentName = tabs[index + 1].name;
+            }else if(tabs[index-1] != undefined){
+              currentName = tabs[index-1].name;
+            }
+            console.log(currentName);
+            if(currentName != null){
+              this.$router.push({name:currentName});
+              this.$store.dispatch({
+                type:'setDefaultTab',
+                currentName:currentName
+              });
+            }  
+          }
+      });
+       this.$store.dispatch({
+          type:"removeTag",
+          removeIndex
+        });
+      }else if(type == 'all'){
+        this.$store.dispatch({
+          type:"removeAllTag"
+        });
+      }
     }
   },
+  computed:{
+    hasRouterView(){
+      let state = this.$store.state.mainframe;
+      return state.tabs.length > 0;
+    }
+  }
 
 }
 </script>
@@ -162,6 +213,12 @@ html,body,.layout{
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+.nav-tab-tag{
+  display: flex;
+}
+.nav-tab-func-group{
+  width: 80px;
 }
 .ivu-tabs-nav-scroll{
   margin: 0 15px;
