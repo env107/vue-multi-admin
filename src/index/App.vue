@@ -5,7 +5,7 @@
           <!-- 头部内容 -->
           <Header :style="{background: '#3b4150'}">
             <div class="sys-container">
-              <div class="sys-container-title">xxx 后台管理系统</div>
+              <div class="sys-container-title">{{ website.title }}</div>
               <div class="sys-header-menu">
                 <Menu v-if="menuPosition == 'top'" mode="horizontal" :style="{background:'#3b4150'}" :active-name="navigate.defaultPosition" theme="dark" width="auto" height="100" >
                   <MenuItem :name="item.id" @click.native="addTabsTag(item)"  v-for="(item,index) in navigate.menu" v-if="!hasChildrenMenu(item)"  :key="index" >
@@ -53,13 +53,13 @@
           <Layout :style="{width:'100%',height:'100%'}">
             <div class="nav-tab-container">
               <div class="nav-tab-tag" >
-                <Tabs :style="{flex:1}" type="card"  closable :value="defaultTab" @on-click="(name)=>redirectTo(name)">             
+                <Tabs :style="{flex:1}" type="card" @on-tab-remove="(name)=>removeTag(name,true)"  closable :value="defaultTab" @on-click="(name)=>redirectTo(name)">             
                     <TabPane  :name="tab.name" :label="tab.label" v-for="(tab,index) in tabs" :key="index" ></TabPane>
                 </Tabs> 
                 <div class="nav-tab-func-group" >
                       <Dropdown :style="{marginRight:'10px'}">
                         <Button type="primary" shape="circle" size="small">标签管理</Button>
-                        <DropdownMenu slot="list" >
+                        <DropdownMenu slot="list" trigger="click">
                           <DropdownItem name="current" @click.native="removeTag('current')">关闭当前标签</DropdownItem>
                           <DropdownItem name="all" @click.native="removeTag('all')">关闭所有标签</DropdownItem>
                       </DropdownMenu>
@@ -82,29 +82,36 @@
 </template>
 <script>
 import navigate from '@/nav.js';
+import { addTagToStorage,removeTagFromStorage,removeAllTagFromStorage } from '@/util.js';
 export default {
   name:"app",
   data:function(){
-    this.$store.dispatch({type:"init"});
+    let current = this.$router.history.current;
+    this.$store.dispatch({type:"init",current});
     let state = this.$store.state.mainframe;   
     return state;
   },
   methods:{
+    //是否有子菜单
     hasChildrenMenu:function(item){
       return item.hasOwnProperty('children') && item.children.length > 0;
     },
+    //是否有图标
     hasItemIcon:function(item){
       return item.hasOwnProperty('icon') && item.icon != null && item.icon != '';
     },
+    //添加页面标签
     addTabsTag:function(item){
+      this.$router.push({name:item.name});
       this.$store.dispatch({
         type:"addTag",
         item
-      })
+      });
+      addTagToStorage(item);
     },
+    //跳转到新的路由
     redirectTo:function(name){ 
       let { currentName } = this.$router.history.current;
-      
       if(currentName != name){
         this.$router.push({name});
       }
@@ -113,23 +120,34 @@ export default {
         currentName:name
       });
     },
-    removeTag:function(type){
+    //删除标签
+    removeTag:function(type,fromTag = false){
       let {tabs,defaultTab} = this.$store.state.mainframe;
       let router = this.$router;
       let removeIndex = -1;
-      if(type == 'current'){
+      let removeTab = null;
+      //是否在标签点击删除
+      if(fromTag){
+        removeTab = type;
+      }else{
+        removeTab = defaultTab;
+      }
+
+      if(type == 'current' || fromTag){
+        //删除当前标签
         tabs.forEach((ele,index)=>{
-          if(ele.name == defaultTab ){
+          if(ele.name == removeTab ){
             let currentName = null;        
-            //选择正确的标签
+            //选择当前标签
             removeIndex = index;
             if(tabs[index + 1] != undefined){
               currentName = tabs[index + 1].name;
             }else if(tabs[index-1] != undefined){
               currentName = tabs[index-1].name;
             }
-            console.log(currentName);
+     
             if(currentName != null){
+              removeTagFromStorage(ele.name);
               this.$router.push({name:currentName});
               this.$store.dispatch({
                 type:'setDefaultTab',
@@ -138,16 +156,23 @@ export default {
             }  
           }
       });
-       this.$store.dispatch({
+      //如果来自非标签删除则手动删除
+      if(!fromTag){
+        this.$store.dispatch({
           type:"removeTag",
           removeIndex
         });
+      }
+       
       }else if(type == 'all'){
+        //删除所有标签
+        removeAllTagFromStorage();
         this.$store.dispatch({
           type:"removeAllTag"
         });
       }
-    }
+    },
+    
   },
   computed:{
     hasRouterView(){
